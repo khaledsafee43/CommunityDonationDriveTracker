@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "item": "Notebooks",
+    "target": 100,
+    "received": 60,
+    "unit": "pieces"
+  },
+  {
+    "id": 2,
+    "item": "Pens",
+    "target": 150,
+    "received": 100,
+    "unit": "pieces"
+  },
+  {
+    "id": 3,
+    "item": "School bags",
+    "target": 20,
+    "received": 8,
+    "unit": "pieces"
+  },
+  {
+    "id": 4,
+    "item": "Blankets",
+    "target": 30,
+    "received": 30,
+    "unit": "pieces"
+  },
+  {
+    "id": 5,
+    "item": "Food packs",
+    "target": 40,
+    "received": 15,
+    "unit": "packs"
+  }
+]
