@@ -1,12 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
     <title>Community Donation Drive Tracker</title>
-</head>
-<body>
-    
-</body>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container">
+        <nav class="nav">
+          <h1>Community Donation Drive Tracker</h1>
+        </nav>
+      </div>
+    </header>
+    <main class="container">
+      <section class="summary">
+        <div class="stat">
+          <strong class="stat-met">0</strong><span>targets met</span>
+        </div>
+        <div class="stat">
+          <strong class="stat-met">0</strong><span>items tracked</span>
+        </div>
+        <div class="stat">
+          <strong class="stat-session-count">0</strong
+          ><span>contributions this session</span>
+        </div>
+      </section>
+      <div class="toolbar">
+        <div class="field">
+          <label for="search-input">Search Item</label>
+          <input type="search" id="search-input" />
+        </div>
+        <div class="field">
+            <label for="filter-status">Situation</label>
+            <select id="filter-status">
+                <option value="all">All</option>
+                <option value="met">Met</option>
+                <option value="needed">Needed</option>
+            </select>
+        </div>
+      </div>
+    </main>
+    <footer class="app-footer"></footer>
+    <script src="app.js"></script>
+  </body>
 </html>
