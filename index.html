@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
     <title>Community Donation Drive Tracker</title>
   </head>
   <body>
@@ -33,12 +34,42 @@
           <input type="search" id="search-input" />
         </div>
         <div class="field">
-            <label for="filter-status">Situation</label>
-            <select id="filter-status">
-                <option value="all">All</option>
-                <option value="met">Met</option>
-                <option value="needed">Needed</option>
-            </select>
+          <label for="filter-status">Situation</label>
+          <select id="filter-status">
+            <option value="all">All</option>
+            <option value="met">Met</option>
+            <option value="needed">Needed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <section class="main-panel">
+          <h2>Donation Targets</h2>
+          <div class="cars">
+            <div class="card">
+              <h3 class="item-title">دفتر</h3>
+              <p>دریافت‌شده: <span>60</span> از <span>100</span></p>
+              <p>باقی‌مانده: <span>40</span></p>
+              <p>پیشرفت: <span>60%</span></p>
+              <span class="badge warning">هنوز نیاز است</span>
+            </div>
+            <div class="card">
+              <h3 class="item-title">دفتر</h3>
+              <p>دریافت‌شده: <span>60</span> از <span>100</span></p>
+              <p>باقی‌مانده: <span>40</span></p>
+              <p>پیشرفت: <span>60%</span></p>
+              <span class="badge warning">هنوز نیاز است</span>
+            </div>
+          </div>
+          <p id="cards-empty-state" class="empty-state hidden">
+            No items match your search or filter.
+          </p>
+        </section>
+        <div class="side-panel">
+          <h2>Record a Contribution</h2>
+          <div class="panel">
+          </div>
         </div>
       </div>
     </main>
