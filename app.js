@@ -173,6 +173,10 @@ errorBTN.addEventListener("click", () => {
 });
 
 
-
+function renderDataTable(){
+  state.items.map((item)=>{
+    
+  })
+}
 
 loadAllData();
