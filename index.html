@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
     <title>Community Donation Drive Tracker</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="apple-touch-icon" href="favicon-180.png" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="app-header">
@@ -15,100 +17,143 @@
         </nav>
       </div>
     </header>
+
     <main class="container">
-      <section class="summary">
-        <div class="stat">
-          <strong class="stat-met">0</strong><span>targets met</span>
-        </div>
-        <div class="stat">
-          <strong class="stat-met">0</strong><span>items tracked</span>
-        </div>
-        <div class="stat">
-          <strong class="stat-session-count">0</strong
-          ><span>contributions this session</span>
-        </div>
-      </section>
-      <div class="toolbar">
-        <div class="field">
-          <label for="search-input">Search Item</label>
-          <input type="search" id="search-input" />
-        </div>
-        <div class="field">
-          <label for="filter-status">Situation</label>
-          <select id="filter-status">
-            <option value="all">All</option>
-            <option value="met">Met</option>
-            <option value="needed">Needed</option>
-          </select>
-        </div>
+      <!-- Loading state -->
+      <div id="loading-state" role="status">
+        <p>Loading donation targets…</p>
       </div>
 
-      <div class="workspace">
-        <section class="main-panel">
-          <h2>Donation Targets</h2>
-          <div class="cards" id="cards-container">
+      <!-- Failure state (initial load only) -->
+      <div id="error-state" class="message error hidden" role="alert">
+        <p>
+          Could not load the donation data. Please check your connection and try
+          again.
+        </p>
+        <button type="button" id="retry-btn">Retry</button>
+      </div>
+
+      <!-- Main app content, shown only once initial load succeeds -->
+      <div id="app-content" class="hidden">
+        <section class="summary" aria-label="Overall progress">
+          <div class="stat">
+            <strong id="stat-met">0</strong>
+            <span>targets met</span>
           </div>
-          <p id="cards-empty-state" class="empty-state hidden">
-            No items match your search or filter.
-          </p>
+          <div class="stat">
+            <strong id="stat-total-items">0</strong>
+            <span>items tracked</span>
+          </div>
+          <div class="stat">
+            <strong id="stat-session-count">0</strong>
+            <span>contributions this session</span>
+          </div>
         </section>
-        <div class="side-panel">
-          <h2>Record a Contribution</h2>
-          <div class="panel">
-            <form action="#" class="form-row">
-              <div class="field">
-                <label for="donor-name">Donor Name:</label>
-                <input
-                  type="text"
-                  id="donor-name"
-                  placeholder="Donor, Enter your name"
-                />
-              </div>
-              <div class="field">
-                <label for="targets">Target:</label>
-                <select name="" id="targets"></select>
-              </div>
-              <div class="field">
-                <label for="quantity">Quantity:</label>
-                <input
-                  type="number"
-                  id="quantity"
-                  placeholder="Enter your quantity"
-                />
-              </div>
-              <div class="action">
-                <button type="submit">Save-form-datas</button>
-              </div>
-            </form>
-            <div id="form-message" class="message hidden"></div>
+
+        <div class="toolbar">
+          <div class="field">
+            <label for="search-input">Search items</label>
+            <input
+              type="search"
+              id="search-input"
+              placeholder="e.g. notebooks"
+            />
           </div>
-          <div class="panel">
-            <h2>The list of the donor</h2>
-            <div class="feild">
-              <label for="donor-filter">Filter by donor name</label>
-              <input
-                type="search"
-                id="donor-filter"
-                placeholder="Fillter by donor name"
-              />
+          <div class="field">
+            <label for="status-filter">Status</label>
+            <select id="status-filter">
+              <option value="all">All</option>
+              <option value="met">Met</option>
+              <option value="needed">Still needed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <!-- Main panel: target cards -->
+          <section class="main-panel">
+            <h2>Donation Targets</h2>
+            <div class="cards" id="cards-container"></div>
+            <p id="cards-empty-state" class="empty-state hidden">
+              No items match your search or filter.
+            </p>
+          </section>
+
+          <!-- Side panel: contribution form + session table -->
+          <section class="side-panel">
+            <div class="panel">
+              <h2>Record a Contribution</h2>
+              <form id="contribution-form" novalidate>
+                <div class="field">
+                  <label for="donor-name">Donor name</label>
+                  <input
+                    type="text"
+                    id="donor-name"
+                    name="donor-name"
+                    autocomplete="off"
+                  />
+                </div>
+                <div class="field">
+                  <label for="item-select">Item</label>
+                  <select id="item-select" name="item-select"></select>
+                </div>
+                <div class="field">
+                  <label for="quantity-input">Quantity</label>
+                  <input
+                    type="number"
+                    id="quantity-input"
+                    name="quantity-input"
+                    min="1"
+                    max="1000"
+                    step="1"
+                  />
+                </div>
+                <div class="actions">
+                  <button type="submit" id="submit-contribution-btn">
+                    Add Contribution
+                  </button>
+                </div>
+              </form>
+              <div id="form-message" class="message hidden" role="alert"></div>
             </div>
-            <table class="table-wramp">
-                <caption>Contributions recorded during this session</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Donor</th>
-                    <th scope="col">Item</th>
-                    <th scope="col">Quantity</th>
-                    <th scope="col">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="session-table-body"></tbody>
-            </table>
-          </div>
+
+            <div class="panel">
+              <h2>This Session's Contributions</h2>
+              <div class="field">
+                <label for="donor-filter">Filter by donor name</label>
+                <input type="search" id="donor-filter" placeholder="e.g. Sam" />
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <caption>
+                    Contributions recorded during this session
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Donor</th>
+                      <th scope="col">Item</th>
+                      <th scope="col">Quantity</th>
+                      <th scope="col">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="session-table-body"></tbody>
+                </table>
+              </div>
+              <p id="session-empty-state" class="empty-state hidden">
+                No contributions recorded yet this session.
+              </p>
+            </div>
+          </section>
         </div>
       </div>
     </main>
-    <footer class="app-footer"></footer>
-    <script src="app.js"></script>
+
+    <footer class="app-footer">
+      <div class="container">
+        <p class="muted">Demo: changes reset when this page reloads.</p>
+      </div>
+    </footer>
+
+    <script src="app.js" defer></script>
   </body>
 </html>

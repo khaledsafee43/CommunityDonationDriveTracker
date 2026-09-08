@@ -307,3 +307,24 @@ img {
   }
 }
 /* Student customisation: add at least one useful project-specific style below. */
+.card .progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #e8edf5;
+  overflow: hidden;
+  margin: 0.5rem 0 0.75rem;
+}
+.card .progress-fill {
+  height: 100%;
+  background: #805018;
+  width: var(--progress, 0%);
+  transition: width 0.2s ease;
+}
+.card.is-complete .progress-fill {
+  background: #155d38;
+}
+
+#session-table-body tr:hover,
+#session-table-body tr:focus-within {
+  background: #f3f6fa;
+}
