@@ -5,7 +5,7 @@ const state = {
   loadSucceeded: false,
   searchTerm: "",
   statusFilter: "all",
-  donorFilter: ""
+  donorFilter: "",
 };
 
 let loadState = document.getElementById("loading-state");
@@ -22,9 +22,36 @@ let cardsEmptyStat = document.getElementById("cards-empty-state");
 let contributionForm = document.getElementById("contribution-form");
 let donorName = document.getElementById("donor-name");
 let addItem = document.getElementById("add-item");
-let quantityInput =document.getElementById("quantity-input");
+let quantityInput = document.getElementById("quantity-input");
 let submitContributionBTN = document.getElementById("submit-contribution-btn");
 let formMessage = document.getElementById("form-message");
 let donorFilter = document.getElementById("donor-filter");
 let sessionTableBody = document.getElementById("session-table-body");
 let sessionEmptyState = document.getElementById("session-empty-state");
+
+async function loadAllData() {
+  loadState.classList.remove("hidden");
+  errorState.classList.add("hidden");
+  appContent.classList.add("hidden");
+  try {
+    const response = fetch("data.json");
+    if (!response) {
+      throw new Error("The response isn't good");
+    }
+    const data = await response.json();
+    state.items = Array.isArray(data) ? data : [];
+    state.loadSucceeded = true;
+
+    loadState.classList.add("hidden");
+    appContent.classList.remove("hidden");
+    renderAll();
+  } catch (err) {
+    loadState.classList.add("hidden");
+    errorState.remove("hidden");
+  }
+}
+
+
+
+loadAllData();
+renderAll();
