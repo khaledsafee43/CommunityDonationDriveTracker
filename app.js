@@ -8,43 +8,35 @@ const state = {
   donorFilter: "",
 };
 
-// ==========================
-// DOM Elements
-// ==========================
+const loadState = document.getElementById("loading-state");
+const errorState = document.getElementById("error-state");
+const errorBTN = document.getElementById("retry-btn");
+const appContent = document.getElementById("app-content");
 
-let loadState = document.getElementById("loading-state");
-let errorState = document.getElementById("error-state");
-let errorBTN = document.getElementById("retry-btn");
-let appContent = document.getElementById("app-content");
+const statMet = document.getElementById("stat-met");
+const statTotalItem = document.getElementById("stat-total-items");
+const statSessionCount = document.getElementById("stat-session-count");
 
-let statMet = document.getElementById("stat-met");
-let statTotalItem = document.getElementById("stat-total-items");
-let statSessionCount = document.getElementById("stat-session-count");
+const searchInput = document.getElementById("search-input");
+const statFilter = document.getElementById("status-filter");
 
-let searchInput = document.getElementById("search-input");
-let statFilter = document.getElementById("status-filter");
+const cardsContainer = document.getElementById("cards-container");
+const cardsEmptyStat = document.getElementById("cards-empty-state");
 
-let cardsContainer = document.getElementById("cards-container");
-let cardsEmptyStat = document.getElementById("cards-empty-state");
+const contributionForm = document.getElementById("contribution-form");
+const donorName = document.getElementById("donor-name");
+const addItem = document.getElementById("add-item");
+const quantityInput = document.getElementById("quantity-input");
 
-let contributionForm = document.getElementById("contribution-form");
-let donorName = document.getElementById("donor-name");
-let addItem = document.getElementById("add-item");
-let quantityInput = document.getElementById("quantity-input");
-
-let submitContributionBTN = document.getElementById(
+const submitContributionBTN = document.getElementById(
   "submit-contribution-btn"
 );
 
-let formMessage = document.getElementById("form-message");
+const formMessage = document.getElementById("form-message");
 
-let donorFilter = document.getElementById("donor-filter");
-let sessionTableBody = document.getElementById("session-table-body");
-let sessionEmptyState = document.getElementById("session-empty-state");
-
-// ==========================
-// Load data
-// ==========================
+const donorFilter = document.getElementById("donor-filter");
+const sessionTableBody = document.getElementById("session-table-body");
+const sessionEmptyState = document.getElementById("session-empty-state");
 
 async function loadAllData() {
   loadState.classList.remove("hidden");
@@ -60,10 +52,9 @@ async function loadAllData() {
       );
     }
 
-    // مهم: await اضافه شده
     const data = await response.json();
 
-    // اگر data.json مستقیماً آرایه باشد
+    // data.json باید آرایه باشد
     state.items = Array.isArray(data) ? data : [];
 
     state.loadSucceeded = true;
@@ -71,10 +62,14 @@ async function loadAllData() {
     loadState.classList.add("hidden");
     appContent.classList.remove("hidden");
 
+    updateDonorFilter();
+
     renderCards();
+    renderDataTable();
+    renderSummary();
 
   } catch (err) {
-    console.error(err);
+    console.error("Loading error:", err);
 
     state.loadSucceeded = false;
 
@@ -84,27 +79,79 @@ async function loadAllData() {
   }
 }
 
-// ==========================
-// Render Cards
-// ==========================
+
+function countTargetsMet() {
+  return state.items.filter((item) => {
+    const target = Number(item.target) || 0;
+    const received = Number(item.received) || 0;
+
+    if (target <= 0) {
+      return received > 0;
+    }
+
+    return received >= target;
+  }).length;
+}
+
+function getFilteredItems() {
+  const search = state.searchTerm.toLowerCase().trim();
+  const donor = state.donorFilter.toLowerCase().trim();
+  const status = state.statusFilter;
+
+  return state.items.filter((item) => {
+    const itemName = String(item.item || "").toLowerCase();
+    const donorNameValue = String(item.donor || "").toLowerCase();
+
+    const target = Number(item.target) || 0;
+    const received = Number(item.received) || 0;
+
+    const isMet =
+      target > 0
+        ? received >= target
+        : received > 0;
+
+   
+    const matchesSearch =
+      !search ||
+      itemName.includes(search) ||
+      donorNameValue.includes(search);
+
+   
+    const matchesDonor =
+      !donor || donorNameValue === donor;
+
+  
+    let matchesStatus = true;
+
+    if (status === "met") {
+      matchesStatus = isMet;
+    }
+
+    if (status === "needed") {
+      matchesStatus = !isMet;
+    }
+
+    return (
+      matchesSearch &&
+      matchesDonor &&
+      matchesStatus
+    );
+  });
+}
 
 function renderCards() {
+  const filteredItems = getFilteredItems();
 
-  // اول بررسی می‌کنیم که data خالی است یا نه
-  if (state.items.length === 0) {
+  if (filteredItems.length === 0) {
     cardsContainer.innerHTML = "";
-
     cardsEmptyStat.classList.remove("hidden");
-
     return;
   }
 
   cardsEmptyStat.classList.add("hidden");
 
-  const allData = state.items.map((item) => {
-
+  const allData = filteredItems.map((item) => {
     const target = Number(item.target) || 0;
-
     const received = Number(item.received) || 0;
 
     const remaining = Math.max(
@@ -126,30 +173,33 @@ function renderCards() {
       <div class="card ${isMet ? "is-complete" : ""}">
 
         <h3 class="item-title">
-          ${item.item}
+          ${item.item || ""}
         </h3>
+
+        <p>
+          Donor:
+          ${item.donor || "-"}
+        </p>
 
         <p>
           Received:
           ${received}
           of
           ${target}
-          ${item.unit}
+          ${item.unit || ""}
         </p>
 
         <p>
           Remaining:
           ${remaining}
-          ${item.unit}
+          ${item.unit || ""}
         </p>
 
         <div class="progress-track">
-
           <div
             class="progress-fill"
             style="width: ${progressPercent}%"
           ></div>
-
         </div>
 
         <p>
@@ -167,16 +217,291 @@ function renderCards() {
 
   cardsContainer.innerHTML = allData.join("");
 }
+function renderDataTable() {
+  const filteredItems = getFilteredItems();
 
-errorBTN.addEventListener("click", () => {
-  loadAllData();
+  if (filteredItems.length === 0) {
+    sessionTableBody.innerHTML = "";
+    sessionEmptyState.classList.remove("hidden");
+    return;
+  }
+
+  sessionEmptyState.classList.add("hidden");
+
+  const dataOfTable = filteredItems.map((item) => {
+  
+    const originalIndex = state.items.indexOf(item);
+
+    return `
+      <tr>
+        <td>
+          ${item.donor || ""}
+        </td>
+
+        <td>
+          ${item.item || ""}
+        </td>
+
+        <td>
+          ${item.received || 0}
+        </td>
+
+        <td>
+          <button
+            class="btn-danger"
+            data-index="${originalIndex}">
+            Remove
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  sessionTableBody.innerHTML =
+    dataOfTable.join("");
+}
+
+
+sessionTableBody.addEventListener("click", (e) => {
+  if (!e.target.classList.contains("btn-danger")) {
+    return;
+  }
+
+  const index = Number(
+    e.target.dataset.index
+  );
+
+  if (
+    Number.isNaN(index) ||
+    index < 0 ||
+    index >= state.items.length
+  ) {
+    return;
+  }
+
+  const item = state.items[index];
+
+  const confirmed = confirm(
+    `Are you sure you want to remove "${item.item}"?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  state.items.splice(index, 1);
+
+  updateDonorFilter();
+  renderCards();
+  renderDataTable();
+  renderSummary();
 });
 
 
-function renderDataTable(){
-  state.items.map((item)=>{
-    
-  })
+function renderSummary() {
+  statMet.textContent =
+    String(countTargetsMet());
+
+  statTotalItem.textContent =
+    String(state.items.length);
+
+  statSessionCount.textContent =
+    String(state.sessionContributions.length);
+}
+
+
+function updateDonorFilter() {
+  if (!donorFilter) {
+    return;
+  }
+
+  const currentValue =
+    donorFilter.value;
+
+  const donors = [
+    ...new Set(
+      state.items
+        .map((item) => item.donor)
+        .filter(Boolean)
+    ),
+  ];
+
+  donorFilter.innerHTML = `
+    <option value="">All Donors</option>
+    ${donors
+      .map(
+        (donor) => `
+          <option value="${donor}">
+            ${donor}
+          </option>
+        `
+      )
+      .join("")}
+  `;
+
+  if (donors.includes(currentValue)) {
+    donorFilter.value = currentValue;
+  }
+}
+
+if (searchInput) {
+  searchInput.addEventListener(
+    "input",
+    (e) => {
+      state.searchTerm =
+        e.target.value;
+
+      renderCards();
+      renderDataTable();
+    }
+  );
+}
+
+
+if (statFilter) {
+  statFilter.addEventListener(
+    "change",
+    (e) => {
+      state.statusFilter =
+        e.target.value;
+
+      renderCards();
+      renderDataTable();
+    }
+  );
+}
+
+if (donorFilter) {
+  donorFilter.addEventListener(
+    "change",
+    (e) => {
+      state.donorFilter =
+        e.target.value;
+
+      renderCards();
+      renderDataTable();
+    }
+  );
+}
+
+if (contributionForm) {
+  contributionForm.addEventListener(
+    "submit",
+    (e) => {
+      e.preventDefault();
+
+      const donor =
+        donorName.value.trim();
+
+      const item =
+        addItem.value.trim();
+
+      const quantity =
+        Number(quantityInput.value);
+
+      // Validation
+      if (!donor) {
+        showFormMessage(
+          "Please enter donor name.",
+          "error"
+        );
+        return;
+      }
+
+      if (!item) {
+        showFormMessage(
+          "Please select an item.",
+          "error"
+        );
+        return;
+      }
+
+      if (
+        Number.isNaN(quantity) ||
+        quantity <= 0
+      ) {
+        showFormMessage(
+          "Please enter a valid quantity.",
+          "error"
+        );
+        return;
+      }
+
+      const contribution = {
+        id: state.nextSessionId,
+        donor: donor,
+        item: item,
+        quantity: quantity,
+      };
+
+      state.nextSessionId++;
+
+     
+      state.sessionContributions.push(
+        contribution
+      );
+      const existingItem =
+        state.items.find(
+          (itemData) =>
+            String(itemData.item)
+              .toLowerCase() ===
+            item.toLowerCase()
+        );
+
+      if (existingItem) {
+        existingItem.received =
+          (Number(existingItem.received) || 0) +
+          quantity;
+      }
+
+      // پاک کردن فرم
+      contributionForm.reset();
+
+      showFormMessage(
+        "Contribution added successfully.",
+        "success"
+      );
+
+      // به‌روزرسانی صفحه
+      updateDonorFilter();
+      renderCards();
+      renderDataTable();
+      renderSummary();
+    }
+  );
+}
+
+
+function showFormMessage(
+  message,
+  type
+) {
+  if (!formMessage) {
+    return;
+  }
+
+  formMessage.textContent =
+    message;
+
+  formMessage.className =
+    "form-message " + type;
+
+  setTimeout(() => {
+    formMessage.textContent = "";
+    formMessage.className =
+      "form-message";
+  }, 3000);
+}
+
+
+if (errorBTN) {
+  errorBTN.addEventListener(
+    "click",
+    () => {
+      loadAllData();
+    }
+  );
 }
 
 loadAllData();
