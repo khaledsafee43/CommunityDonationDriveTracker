@@ -30,28 +30,17 @@ let sessionTableBody = document.getElementById("session-table-body");
 let sessionEmptyState = document.getElementById("session-empty-state");
 
 async function loadAllData() {
-  loadState.classList.remove("hidden");
-  errorState.classList.add("hidden");
-  appContent.classList.add("hidden");
   try {
-    const response = fetch("data.json");
-    if (!response) {
-      throw new Error("The response isn't good");
+   const response = await fetch("data.json")
+    if(!response.ok){
+      throw new Error("Network response was not ok (" + response.status + ")");
     }
-    const data = await response.json();
-    state.items = Array.isArray(data) ? data : [];
+    const data = response.json();
+    state.items = data;
     state.loadSucceeded = true;
-
-    loadState.classList.add("hidden");
-    appContent.classList.remove("hidden");
-    renderAll();
   } catch (err) {
-    loadState.classList.add("hidden");
-    errorState.remove("hidden");
+    console.error(err);
   }
 }
 
-
-
 loadAllData();
-renderAll();
