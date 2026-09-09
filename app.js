@@ -5,389 +5,274 @@ const state = {
   loadSucceeded: false,
   searchTerm: "",
   statusFilter: "all",
-  donorFilter: "",
+  donorFilter: ""
 };
-const loadState = document.getElementById("loading-state");
-const errorState = document.getElementById("error-state");
-const errorBTN = document.getElementById("retry-btn");
-const appContent = document.getElementById("app-content");
-const statMet = document.getElementById("stat-met");
-const statTotalItem = document.getElementById("stat-total-items");
-const statSessionCount = document.getElementById("stat-session-count");
+const loadingStateEl = document.getElementById("loading-state");
+const errorStateEl = document.getElementById("error-state");
+const retryBtn = document.getElementById("retry-btn");
+const appContentEl = document.getElementById("app-content");
+const statMetEl = document.getElementById("stat-met");
+const statTotalItemsEl = document.getElementById("stat-total-items");
+const statSessionCountEl = document.getElementById("stat-session-count");
 const searchInput = document.getElementById("search-input");
-const statFilter = document.getElementById("status-filter");
+const statusFilterSelect = document.getElementById("status-filter");
 const cardsContainer = document.getElementById("cards-container");
-const cardsEmptyStat = document.getElementById("cards-empty-state");
+const cardsEmptyState = document.getElementById("cards-empty-state");
 const contributionForm = document.getElementById("contribution-form");
-const donorName = document.getElementById("donor-name");
-const addItem = document.getElementById("add-item");
+const donorNameInput = document.getElementById("donor-name");
+const itemSelect = document.getElementById("item-select");
 const quantityInput = document.getElementById("quantity-input");
-const submitContributionBTN = document.getElementById(
-  "submit-contribution-btn"
-);
-const formMessage = document.getElementById("form-message");
-const donorFilter = document.getElementById("donor-filter");
+const submitContributionBtn = document.getElementById("submit-contribution-btn");
+const formMessageEl = document.getElementById("form-message");
+const donorFilterInput = document.getElementById("donor-filter");
 const sessionTableBody = document.getElementById("session-table-body");
 const sessionEmptyState = document.getElementById("session-empty-state");
-async function loadAllData() {
-  loadState.classList.remove("hidden");
-  errorState.classList.add("hidden");
-  appContent.classList.add("hidden");
+async function loadData() {
+  loadingStateEl.classList.remove("hidden");
+  errorStateEl.classList.add("hidden");
+  appContentEl.classList.add("hidden");
   try {
     const response = await fetch("data.json");
-    if (!response.ok) {
-      throw new Error(
-        "Network response was not ok (" + response.status + ")"
-      );
+    if (!response) {
+      throw new Error("Network response was not ok (" + response.status + ")");
     }
     const data = await response.json();
     state.items = Array.isArray(data) ? data : [];
     state.loadSucceeded = true;
-    loadState.classList.add("hidden");
-    appContent.classList.remove("hidden");
-    updateDonorFilter();
-    renderCards();
-    renderDataTable();
-    renderSummary();
+    loadingStateEl.classList.add("hidden");
+    appContentEl.classList.remove("hidden");
+    setControlsDisabled(false);
+    populateItemSelect();
+    renderAll();
   } catch (err) {
-    console.error("Loading error:", err);
-    state.loadSucceeded = false;
-    loadState.classList.add("hidden");
-    appContent.classList.add("hidden");
-    errorState.classList.remove("hidden");
+    loadingStateEl.classList.add("hidden");
+    errorStateEl.classList.remove("hidden");
+    setControlsDisabled(true);
   }
+}
+function setControlsDisabled(disabled) {
+  submitContributionBtn.disabled = disabled;
+  donorNameInput.disabled = disabled;
+  itemSelect.disabled = disabled;
+  quantityInput.disabled = disabled;
+}
+retryBtn.addEventListener("click", () => {
+  if (!state.loadSucceeded) {
+    loadData();
+  }
+});
+function calculateItemStats(item) {
+  const target = Number(item.target) || 0;
+  const received = Number(item.received) || 0;
+  const remaining = Math.max(0, target - received);
+  const progressPercent = target > 0 ?  ((received / target) * 100) : 0;
+  const isMet = target > 0 ? received >= target : received > 0;
+  return { remaining, progressPercent, isMet };
 }
 function countTargetsMet() {
-  return state.items.filter((item) => {
-    const target = Number(item.target) || 0;
-    const received = Number(item.received) || 0;
-    if (target <= 0) {
-      return received > 0;
-    }
-    return received >= target;
-  }).length;
+  return state.items.reduce((count, item) => {
+    return calculateItemStats(item).isMet ? count + 1 : count;
+  }, 0);
+}
+function normalize(text) {
+  return String(text).trim().toLowerCase();
 }
 function getFilteredItems() {
-  const search = state.searchTerm.toLowerCase().trim();
-  const donor = state.donorFilter.toLowerCase().trim();
-  const status = state.statusFilter;
+  const term = normalize(state.searchTerm);
   return state.items.filter((item) => {
-    const itemName = String(item.item || "").toLowerCase();
-    const donorNameValue = String(item.donor || "").toLowerCase();
-    const target = Number(item.target) || 0;
-    const received = Number(item.received) || 0;
-    const isMet =
-      target > 0
-        ? received >= target
-        : received > 0;
-    const matchesSearch =
-      !search ||
-      itemName.includes(search) ||
-      donorNameValue.includes(search);
-    const matchesDonor =
-      !donor || donorNameValue === donor;
-    let matchesStatus = true;
-    if (status === "met") {
-      matchesStatus = isMet;
+    const matchesSearch = term === "" || normalize(item.item).includes(term);
+    if (!matchesSearch) return false;
+    if (state.statusFilter === "met") {
+      return calculateItemStats(item).isMet;
     }
-    if (status === "needed") {
-      matchesStatus = !isMet;
+    if (state.statusFilter === "needed") {
+      return !calculateItemStats(item).isMet;
     }
-    return (
-      matchesSearch &&
-      matchesDonor &&
-      matchesStatus
-    );
+    return true;
   });
+}
+function getFilteredSessionContributions() {
+  const term = normalize(state.donorFilter);
+  if (term === "") return state.sessionContributions;
+  return state.sessionContributions.filter((c) => normalize(c.donor).includes(term));
+}
+function renderAll() {
+  renderSummary();
+  renderCards();
+  renderSessionTable();
+}
+function renderSummary() {
+  statMetEl.textContent = String(countTargetsMet());
+  statTotalItemsEl.textContent = String(state.items.length);
+  statSessionCountEl.textContent = String(state.sessionContributions.length);
 }
 function renderCards() {
-  const filteredItems = getFilteredItems();
-  if (filteredItems.length === 0) {
-    cardsContainer.innerHTML = "";
-    cardsEmptyStat.classList.remove("hidden");
+  const filtered = getFilteredItems();
+  cardsContainer.innerHTML = "";
+  if (filtered.length === 0) {
+    cardsEmptyState.classList.remove("hidden");
     return;
   }
-  cardsEmptyStat.classList.add("hidden");
-  const allData = filteredItems.map((item) => {
-    const target = Number(item.target) || 0;
-    const received = Number(item.received) || 0;
-    const remaining = Math.max(
-      0,
-      target - received
-    );
-    const progressPercent =
-      target > 0
-        ? Math.min((received / target) * 100, 100)
-        : 0;
-    const isMet =
-      target > 0
-        ? received >= target
-        : received > 0;
-    return `
-      <div class="card ${isMet ? "is-complete" : ""}">
-        <h3 class="item-title">
-          ${item.item || ""}
-        </h3>
-        <p>
-          Donor:
-          ${item.donor || "-"}
-        </p>
-        <p>
-          Received:
-          ${received}
-          of
-          ${target}
-          ${item.unit || ""}
-        </p>
-        <p>
-          Remaining:
-          ${remaining}
-          ${item.unit || ""}
-        </p>
-        <div class="progress-track">
-          <div
-            class="progress-fill"
-            style="width: ${progressPercent}%"
-          ></div>
-        </div>
-        <p>
-          Progress:
-          ${Math.round(progressPercent)}%
-        </p>
-        <span class="badge ${isMet ? "success" : "warning"}">
-          ${isMet ? "Met" : "Still needed"}
-        </span>
-      </div>
-    `;
+  cardsEmptyState.classList.add("hidden");
+  filtered.forEach((item) => {
+    const { remaining, progressPercent, isMet } = calculateItemStats(item);
+    const card = document.createElement("article");
+    card.className = "card" + (isMet ? " is-complete" : "");
+    card.dataset.id = String(item.id);
+    const title = document.createElement("h3");
+    title.className = "item-title";
+    title.textContent = item.item;
+    card.appendChild(title);
+    const receivedLine = document.createElement("p");
+    receivedLine.textContent =
+      "Received: " + item.received + " of " + item.target + " " + item.unit;
+    card.appendChild(receivedLine);
+    const remainingLine = document.createElement("p");
+    remainingLine.textContent = "Remaining: " + remaining + " " + item.unit;
+    card.appendChild(remainingLine);
+    const progressTrack = document.createElement("div");
+    progressTrack.className = "progress-track";
+    const progressFill = document.createElement("div");
+    progressFill.className = "progress-fill";
+    progressFill.style.setProperty("--progress", Math.min(progressPercent, 100) + "%");
+    progressTrack.appendChild(progressFill);
+    card.appendChild(progressTrack);
+    const progressLine = document.createElement("p");
+    progressLine.textContent = "Progress: " + progressPercent + "%";
+    card.appendChild(progressLine);
+    const badge = document.createElement("span");
+    badge.className = "badge " + (isMet ? "success" : "warning");
+    badge.textContent = isMet ? "Met" : "Still needed";
+    card.appendChild(badge);
+    cardsContainer.appendChild(card);
   });
-  cardsContainer.innerHTML = allData.join("");
 }
-function renderDataTable() {
-  const filteredItems = getFilteredItems();
-  if (filteredItems.length === 0) {
-    sessionTableBody.innerHTML = "";
+function populateItemSelect() {
+  itemSelect.innerHTML = "";
+  state.items.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = String(item.id);
+    option.textContent = item.item + " (" + item.unit + ")";
+    itemSelect.appendChild(option);
+  });
+}
+function renderSessionTable() {
+  const filtered = getFilteredSessionContributions();
+  sessionTableBody.innerHTML = "";
+  if (filtered.length === 0) {
     sessionEmptyState.classList.remove("hidden");
     return;
   }
   sessionEmptyState.classList.add("hidden");
-  const dataOfTable = filteredItems.map((item) => {
-    const originalIndex = state.items.indexOf(item);
-    return `
-      <tr>
-        <td>
-          ${item.donor || ""}
-        </td>
-        <td>
-          ${item.item || ""}
-        </td>
-        <td>
-          ${item.received || 0}
-        </td>
-        <td>
-          <button
-            class="btn-danger"
-            data-index="${originalIndex}">
-            Remove
-          </button>
-        </td>
-      </tr>
-    `;
+  filtered.forEach((contribution) => {
+    const row = document.createElement("tr");
+    row.dataset.sessionId = String(contribution.sessionId);
+    const donorCell = document.createElement("td");
+    donorCell.textContent = contribution.donor;
+    row.appendChild(donorCell);
+    const itemCell = document.createElement("td");
+    itemCell.textContent = contribution.itemName;
+    row.appendChild(itemCell);
+    const qtyCell = document.createElement("td");
+    qtyCell.textContent = String(contribution.quantity);
+    row.appendChild(qtyCell);
+    const actionCell = document.createElement("td");
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn-danger";
+    removeBtn.textContent = "Remove";
+    removeBtn.dataset.action = "remove";
+    removeBtn.dataset.sessionId = String(contribution.sessionId);
+    actionCell.appendChild(removeBtn);
+    row.appendChild(actionCell);
+    sessionTableBody.appendChild(row);
   });
-  sessionTableBody.innerHTML =
-    dataOfTable.join("");
 }
-sessionTableBody.addEventListener("click", (e) => {
-  if (!e.target.classList.contains("btn-danger")) {
-    return;
+function validateContribution(donorRaw, itemId, quantityRaw) {
+  const errors = [];
+  const donor = donorRaw.trim();
+  if (donor.length < 2 || donor.length > 60) {
+    errors.push("Donor name must be between 2 and 60 characters.");
   }
-  const index = Number(
-    e.target.dataset.index
+  const item = state.items.find((i) => String(i.id) === String(itemId));
+  if (!item) {
+    errors.push("Please choose a valid item.");
+  }
+  const quantityText = quantityRaw.trim();
+  let quantity = null;
+  if (quantityText === "") {
+    errors.push("Quantity is required.");
+  } else {
+    const parsed = Number(quantityText);
+    if (!Number.isFinite(parsed) || parsed % 1 !== 0) {
+      errors.push("Quantity must be a whole number.");
+    } else if (parsed < 1 || parsed > 1000) {
+      errors.push("Quantity must be between 1 and 1000.");
+    } else {
+      quantity = parsed;
+    }
+  }
+  return { valid: errors.length === 0, errors, donor, item, quantity };
+}
+function showFormMessage(text, isError) {
+  formMessageEl.textContent = text;
+  formMessageEl.classList.remove("hidden", "success", "error");
+  formMessageEl.classList.add(isError ? "error" : "success");
+  formMessageEl.setAttribute("role", isError ? "alert" : "status");
+}
+contributionForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const result = validateContribution(
+    donorNameInput.value,
+    itemSelect.value,
+    quantityInput.value
   );
-  if (
-    Number.isNaN(index) ||
-    index < 0 ||
-    index >= state.items.length
-  ) {
+  if (!result.valid) {
+    showFormMessage(result.errors.join(" "), true);
     return;
   }
-  const item = state.items[index];
-  const confirmed = confirm(
-    `Are you sure you want to remove "${item.item}"?`
+  result.item.received = Number(result.item.received) + result.quantity;
+  const sessionId = state.nextSessionId;
+  state.nextSessionId += 1;
+  state.sessionContributions.push({
+    sessionId,
+    donor: result.donor,
+    itemId: result.item.id,
+    itemName: result.item.item,
+    quantity: result.quantity
+  });
+  showFormMessage(
+    "Recorded " + result.quantity + " " + result.item.unit + " from " + result.donor + ".",
+    false
   );
-  if (!confirmed) {
-    return;
-  }
-  state.items.splice(index, 1);
-  updateDonorFilter();
-  renderCards();
-  renderDataTable();
-  renderSummary();
+  contributionForm.reset();
+  renderAll();
 });
-function renderSummary() {
-  statMet.textContent =
-    String(countTargetsMet());
-  statTotalItem.textContent =
-    String(state.items.length);
-  statSessionCount.textContent =
-    String(state.sessionContributions.length);
-}
-function updateDonorFilter() {
-  if (!donorFilter) {
-    return;
+sessionTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action='remove']");
+  if (!button) return;
+  const sessionId = Number(button.dataset.sessionId);
+  const index = state.sessionContributions.findIndex((c) => c.sessionId === sessionId);
+  if (index === -1) return;
+  const contribution = state.sessionContributions[index];
+  const item = state.items.find((i) => i.id === contribution.itemId);
+  if (item) {
+    item.received = Number(item.received) - contribution.quantity;
   }
-  const currentValue =
-    donorFilter.value;
-  const donors = [
-    ...new Set(
-      state.items
-        .map((item) => item.donor)
-        .filter(Boolean)
-    ),
-  ];
-  donorFilter.innerHTML = `
-    <option value="">All Donors</option>
-    ${donors
-      .map(
-        (donor) => `
-          <option value="${donor}">
-            ${donor}
-          </option>
-        `
-      )
-      .join("")}
-  `;
-  if (donors.includes(currentValue)) {
-    donorFilter.value = currentValue;
-  }
-}
-if (searchInput) {
-  searchInput.addEventListener(
-    "input",
-    (e) => {
-      state.searchTerm =
-        e.target.value;
-      renderCards();
-      renderDataTable();
-    }
-  );
-}
-if (statFilter) {
-  statFilter.addEventListener(
-    "change",
-    (e) => {
-      state.statusFilter =
-        e.target.value;
-      renderCards();
-      renderDataTable();
-    }
-  );
-}
-if (donorFilter) {
-  donorFilter.addEventListener(
-    "change",
-    (e) => {
-      state.donorFilter =
-        e.target.value;
-      renderCards();
-      renderDataTable();
-    }
-  );
-}
-if (contributionForm) {
-  contributionForm.addEventListener(
-    "submit",
-    (e) => {
-      e.preventDefault();
-      const donor =
-        donorName.value.trim();
-      const item =
-        addItem.value.trim();
-      const quantity =
-        Number(quantityInput.value);
-      if (!donor) {
-        showFormMessage(
-          "Please enter donor name.",
-          "error"
-        );
-        return;
-      }
-      if (!item) {
-        showFormMessage(
-          "Please select an item.",
-          "error"
-        );
-        return;
-      }
-      if (
-        Number.isNaN(quantity) ||
-        quantity <= 0
-      ) {
-        showFormMessage(
-          "Please enter a valid quantity.",
-          "error"
-        );
-        return;
-      }
-      const contribution = {
-        id: state.nextSessionId,
-        donor: donor,
-        item: item,
-        quantity: quantity,
-      };
-      state.nextSessionId++;
-      state.sessionContributions.push(
-        contribution
-      );
-      const existingItem =
-        state.items.find(
-          (itemData) =>
-            String(itemData.item)
-              .toLowerCase() ===
-            item.toLowerCase()
-        );
-      if (existingItem) {
-        existingItem.received =
-          (Number(existingItem.received) || 0) +
-          quantity;
-      }
-      contributionForm.reset();
-      showFormMessage(
-        "Contribution added successfully.",
-        "success"
-      );
-      updateDonorFilter();
-      renderCards();
-      renderDataTable();
-      renderSummary();
-    }
-  );
-}
-function showFormMessage(
-  message,
-  type
-) {
-  if (!formMessage) {
-    return;
-  }
-
-  formMessage.textContent =
-    message;
-
-  formMessage.className =
-    "form-message " + type;
-
-  setTimeout(() => {
-    formMessage.textContent = "";
-    formMessage.className =
-      "form-message";
-  }, 3000);
-}
-if (errorBTN) {
-  errorBTN.addEventListener(
-    "click",
-    () => {
-      loadAllData();
-    }
-  );
-}
-loadAllData();
+  state.sessionContributions.splice(index, 1);
+  showFormMessage("Removed contribution from " + contribution.donor + ".", false);
+  renderAll();
+});
+searchInput.addEventListener("input", (event) => {
+  state.searchTerm = event.target.value;
+  renderCards();
+});
+statusFilterSelect.addEventListener("change", (event) => {
+  state.statusFilter = event.target.value;
+  renderCards();
+});
+donorFilterInput.addEventListener("input", (event) => {
+  state.donorFilter = event.target.value;
+  renderSessionTable();
+});
+loadData();
